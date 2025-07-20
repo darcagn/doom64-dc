@@ -1,6 +1,6 @@
-# Doom 64 for Dreamcast (updated 2025/05/18) #
+# Doom 64 for Dreamcast (updated 2025/07/30) #
 
-Important note: Doom 64 finally works and is stable when built against KOS `master`.
+Important note: Doom 64 finally works and is stable when built against recent-ish KOS `master`.
 
 **Please pay close attention to the README as significant new features have been added and the build instructions have changed.**
 
