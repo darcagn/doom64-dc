@@ -557,7 +557,7 @@ void I_InitRumble(i_rumble_pak_t rumblepak)
 void I_Rumble(uint32_t packet)
 {
 	if ((gamemap != 33) && !demoplayback) {
-		kthread_job_t *next_job = (kthread_job_t *)Z_Malloc(sizeof(kthread_job_t *), PU_STATIC, NULL);
+		kthread_job_t *next_job = (kthread_job_t *)Z_Malloc(sizeof(*next_job), PU_STATIC, NULL);
 		next_job->data = (void *)packet;
 
 		thd_worker_add_job(rumble_worker_thread, next_job);
