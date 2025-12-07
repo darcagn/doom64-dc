@@ -483,6 +483,7 @@ void I_VMUFB(int force_refresh)
 void I_RumbleThread(void *param)
 {
 	(void)param;
+
 	kthread_job_t *next_job = thd_worker_dequeue_job(rumble_worker_thread);
 
 	if (next_job) {
@@ -491,74 +492,59 @@ void I_RumbleThread(void *param)
 		maple_device_t *purudev = NULL;
 		purudev = maple_enum_type(0, MAPLE_FUNC_PURUPURU);
 		if (purudev)
-				purupuru_rumble_raw(purudev, packet);
+			purupuru_rumble_raw(purudev, packet);
 	}
 }
 
-int rumble_patterns[NUM_RUMBLE];
-
-static int striker_rumble_patterns[NUM_RUMBLE] = {
-	0x23084000,
-	0x3339F010,
-	0x23083000,
-	0x0f082000,
-	0x23083000,
-	0x04004001,
-	0x04007001,
-	0x03003001,
-	0x0f082000,
-	0x19083000,
-	0x1e085000,
-	0x0a082000,
-	0x05001001,
-	0x23083000,
-	0x3339c010,
+purupuru_effect_t rumble_patterns[NUM_RUMBLE] = {
+	{ .motor = 1, .fpow = 4, .conv = 1, .freq = 8,  .inc = 2 }, /* hoof */
+	{ .motor = 1, .fpow = 7, .conv = 1, .freq = 57, .inc = 3 }, /* quake */
+	{ .motor = 1, .fpow = 3, .conv = 1, .freq = 8,  .inc = 2 }, /* punch */
+	{ .motor = 1, .fpow = 2, .conv = 1, .freq = 24, .inc = 2 }, /* saw */
+	{ .motor = 1, .fpow = 3, .conv = 1, .freq = 8,  .inc = 1 }, /* sawready */
+	{ .motor = 1, .fpow = 4, .conv = 1, .freq = 7,  .inc = 1 }, /* missile */
+	{ .motor = 1, .fpow = 7, .conv = 1, .freq = 24, .inc = 3 }, /* bfg */
+	{ .motor = 1, .fpow = 3, .conv = 1, .freq = 8,  .inc = 1 }, /* plasma */
+	{ .motor = 1, .fpow = 2, .conv = 1, .freq = 8,  .inc = 1 }, /* pistol */
+	{ .motor = 1, .fpow = 4, .conv = 1, .freq = 12, .inc = 1 }, /* shotgun */
+	{ .motor = 1, .fpow = 6, .conv = 1, .freq = 12, .inc = 1 }, /* shotgun2 */
+	{ .motor = 1, .fpow = 2, .conv = 1, .freq = 8,  .inc = 1 }, /* cgun */
+	{ .motor = 1, .fpow = 2, .conv = 1, .freq = 8,  .inc = 1 }, /* laser */
+	{ .motor = 1, .fpow = 3, .conv = 1, .freq = 8,  .inc = 2 }, /* oof */
+	{ .motor = 1, .fpow = 4, .conv = 1, .freq = 57, .inc = 3 }, /* thunder */
 };
 
-int I_GetDamageRumble(int damage)
+purupuru_effect_t I_GetDamageRumble(int damage)
 {
-	switch (menu_settings.Rumble) {
-	case (int)rumblepak_off:
-		return 0;
-	case (int)rumblepak_strikerdc:
-		rumble_fields_t fields = {.raw = 0x021A7009};
+	purupuru_effect_t effect = { .motor = 1 };
 
-		int rumbledamage;
-		if (damage > 50)
-			rumbledamage = 7;
-		else
-			rumbledamage = 7 * damage / 50;
+	if(menu_settings.Rumble) {
+		effect = (purupuru_effect_t) {
+			/* Select normal motor */
+			.motor = 1,
 
-		fields.fx1_intensity = rumbledamage;
-		fields.fx2_lintensity = 0;
-		fields.fx2_uintensity = 0;
-		fields.fx2_pulse = damage < 25;
-		fields.special_pulse = damage > 40;
-		fields.duration = damage;
+			/* Scale forward motion power from values 2 - 7 based on damage */
+			.fpow = damage > 50 ? 7 : (7 * damage / 50) < 2 ? 2 : (7 * damage / 50),
 
-		return fields.raw;
-	default:
-		return 0;
+			/* Convergent rumble */
+			.conv = 1,
+
+			/* Clamp motor frequency from values 7 - 59 based on damage */
+			.freq = (damage < 7 ) ? 7 : (damage > 59) ? 59 : damage,
+
+			/* Scale inclination from values 1 - 3 based on damage */
+			.inc = damage > 50 ? 3 : (3 * damage / 50) < 1 ? 1 : (3 * damage / 50),
+		};
 	}
+
+	return effect;
 }
 
-void I_InitRumble(i_rumble_pak_t rumblepak)
-{
-	switch (rumblepak) {
-		case rumblepak_off:
-			return;
-		case rumblepak_strikerdc:
-			memcpy(rumble_patterns, striker_rumble_patterns, sizeof(rumble_patterns));
-		default:
-			return;
-	}
-}
-
-void I_Rumble(uint32_t packet)
+void I_Rumble(purupuru_effect_t effect)
 {
 	if ((gamemap != 33) && !demoplayback) {
 		kthread_job_t *next_job = (kthread_job_t *)Z_Malloc(sizeof(*next_job), PU_STATIC, NULL);
-		next_job->data = (void *)packet;
+		next_job->data = (void *)effect.raw;
 
 		thd_worker_add_job(rumble_worker_thread, next_job);
 		thd_worker_wakeup(rumble_worker_thread);
@@ -568,7 +554,6 @@ void I_Rumble(uint32_t packet)
 
 void I_Init(void)
 {
-	I_InitRumble(rumblepak_off);
 	rumble_worker_attr.create_detached = 1;
 	rumble_worker_attr.stack_size = 4096;
 	rumble_worker_attr.stack_ptr = NULL;
