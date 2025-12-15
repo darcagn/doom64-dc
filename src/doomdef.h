@@ -62,6 +62,19 @@ typedef enum {
 	NUM_RUMBLE
 } i_rumble_t;
 
+typedef enum {
+	maple_controller,
+	maple_lcd,
+	maple_memcard,
+	maple_rumble,
+	maple_mouse,
+	maple_keyboard,
+
+	NUM_MAPLE,
+} i_maple_t;
+
+extern maple_device_t *maple_devices[NUM_MAPLE];
+
 extern purupuru_effect_t rumble_patterns[NUM_RUMBLE];
 
 purupuru_effect_t I_GetDamageRumble(int damage);
